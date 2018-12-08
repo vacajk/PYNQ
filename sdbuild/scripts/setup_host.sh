@@ -45,34 +45,45 @@ set -e
 sudo apt-get install -y $PACKAGES
 
 # Install up-to-date versions of crosstool and qemu
-if [ -e tools ]; then
-  rm -rf tools
+if [ ! -e tools ]; then
+  mkdir tools
 fi
 
-mkdir tools
 cd tools/
 
-wget http://crosstool-ng.org/download/crosstool-ng/crosstool-ng-1.22.0.tar.bz2
-tar -xf crosstool-ng-1.22.0.tar.bz2
-cd crosstool-ng/
-./configure --prefix=/opt/crosstool-ng
-make
-sudo make install
-cd ..
+if [ ! -e crosstool-ng-1.22.0.tar.bz2 ]; then
+  wget http://crosstool-ng.org/download/crosstool-ng/crosstool-ng-1.22.0.tar.bz2
+fi
 
-wget http://wiki.qemu-project.org/download/qemu-2.8.0.tar.bz2
-tar -xf qemu-2.8.0.tar.bz2
-cd qemu-2.8.0
-patch -p 1 < $script_dir/qemu.patch
-./configure --target-list=arm-linux-user,aarch64-linux-user --prefix=/opt/qemu --static
-make
-sudo make install
-# Create the symlink that ubuntu expects
-cd /opt/qemu/bin
-sudo rm -rf qemu-arm-static qemu-aarch64-static
-sudo ln -s qemu-arm qemu-arm-static
-sudo ln -s qemu-aarch64 qemu-aarch64-static
-cd ~
+if ! which ct-ng
+then
+  tar -xf crosstool-ng-1.22.0.tar.bz2
+  cd crosstool-ng/
+  ./configure --prefix=/opt/crosstool-ng
+  make
+  sudo make install
+  cd ..
+fi
+
+if [ ! -e qemu-2.8.0.tar.bz2 ]; then
+  wget http://wiki.qemu-project.org/download/qemu-2.8.0.tar.bz2
+fi
+
+if ! which qemu-arm
+then
+  tar -xf qemu-2.8.0.tar.bz2
+  cd qemu-2.8.0
+  patch -p 1 < $script_dir/qemu.patch
+  ./configure --target-list=arm-linux-user,aarch64-linux-user --prefix=/opt/qemu --static
+  make
+  sudo make install
+  # Create the symlink that ubuntu expects
+  cd /opt/qemu/bin
+  sudo rm -rf qemu-arm-static qemu-aarch64-static
+  sudo ln -s qemu-arm qemu-arm-static
+  sudo ln -s qemu-aarch64 qemu-aarch64-static
+  cd ~
+fi
 
 # Create gmake symlink to keep SDK happy
 cd /usr/bin
@@ -82,6 +93,7 @@ then
 fi
 
 echo 'PATH=/opt/qemu/bin:/opt/crosstool-ng/bin:$PATH' >> ~/.profile
+source ~/.profile
 
 echo "Now install Vivado, SDx, and Petalinux."
 echo "Re-login to  ensure the enviroment is properly set up."
